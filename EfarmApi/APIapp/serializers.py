@@ -94,7 +94,7 @@ class ProductSerializer(serializers.ModelSerializer):
 class PlaceOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model=OrderPlaced
-        fields="--all__"
+        fields="__all__"
 
 
 class OrderListSerializer(serializers.ModelSerializer):
@@ -116,3 +116,7 @@ class CheckOutSerializer(serializers.ModelSerializer):
         fields = ['product','quantity','price','total_amount']
 
 
+class FeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = ['id', 'name', 'email', 'message', 'created_at']

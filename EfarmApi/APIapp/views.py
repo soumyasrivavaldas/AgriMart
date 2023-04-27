@@ -31,7 +31,7 @@ from django.utils.http import urlsafe_base64_decode
 
 
 User = get_user_model() 
-class CustomerRegistrationAPI(APIView):
+class UserRegistrationAPI(APIView):
     permission_classes = (permissions.AllowAny,)
     serializer_class = UserSerializer
     def post(self, request, format=None):
@@ -48,32 +48,6 @@ class CustomerRegistrationAPI(APIView):
                     return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
                 user = serializer.save()
                 user.set_password(password)
-                user.is_customer = True
-                user.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except IntegrityError:
-                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class FarmerRegistrationAPI(APIView): 
-    permission_classes = (permissions.AllowAny,)
-    serializer_class = UserSerializer
-    def post(self, request, format=None):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                print("before",serializer.validated_data)
-                password = serializer.validated_data.pop('password')
-                print(password)
-                confirm_password = serializer.validated_data.pop('confirm_password')
-                print(confirm_password)
-                print("After",serializer.validated_data)
-                if password != confirm_password:
-                    return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-                user = serializer.save()
-                user.set_password(password)
-                user.is_farmer = True
                 user.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except IntegrityError:
@@ -151,34 +125,23 @@ class FruitsList(generics.ListAPIView):
         return Response(data)
 
 
-class Veglistbypin(generics.ListAPIView):
-    pin = 509381
-    queryset = Product.objects.filter(category='V', pincode=pin)
-    serializer_class = ProductSerializer
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
+class Veglistbypin(APIView):
+  def get(self, request, pin):
+        product = Product.objects.filter(category='V',pincode = pin)
+        serializer = ProductSerializer(product,many = True)
+        data=serializer.data
         for item in data:
-            item['product_image'] = request.build_absolute_uri(
-                item['product_image'])
-        return Response(data)
+           item['product_image']=request.build_absolute_uri(item['product_image'])
+        return Response(data, status=200)
 
-
-class Frtlistbypin(generics.ListAPIView):
-    pin = 509381
-    queryset = Product.objects.filter(category='F', pincode=pin)
-    serializer_class = ProductSerializer
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
+class Frtlistbypin(APIView):
+  def get(self, request, pin):
+        product = Product.objects.filter(category='F',pincode = pin)
+        serializer = ProductSerializer(product,many = True)
+        data=serializer.data
         for item in data:
-            item['product_image'] = request.build_absolute_uri(
-                item['product_image'])
-        return Response(data)
+           item['product_image']=request.build_absolute_uri(item['product_image'])
+        return Response(data, status=200)
 
 
 class add_to_cartAPI(APIView):
@@ -189,6 +152,39 @@ class add_to_cartAPI(APIView):
         cart = Cart.objects.filter(user=user)
         serializer = CartSerializer(cart, many=True)
         return Response(serializer.data)
+
+class add_to_cartPost(APIView):
+
+  permission_classes = [permissions.IsAuthenticated]
+
+  def post(self, request):
+
+    user = request.user
+
+    serializer = CartSerializer(data=request.data)
+
+   
+
+    if serializer.is_valid():
+
+      item = serializer.save(user=user)
+
+      return Response(CartSerializer(item).data, status=status.HTTP_201_CREATED)
+
+   
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class Deletecart(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def delete(self, request, pk):
+        try:
+            cart_item = Cart.objects.get(pk=pk, user=request.user)
+            cart_item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Cart.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
 
 
 class AddProductsView(APIView):
@@ -247,21 +243,22 @@ class BuyNowView(APIView):
 
 
 class OrderPlacedApi(APIView):
+    permission_classes=[IsAuthenticated]
     def get(self, request, pk=None, format=None):
         user = request.user
         cus = OrderPlaced.objects.filter(user=user)
         serializer = PlaceOrderSerializer(cus, many=True)
         return Response(serializer.data)
 
-    def post(self, request, format=None):
-        user = request.user
-        serializer = PlaceOrderSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.save()
-            data.user = user
-            data.save()
-            return Response({'msg': 'Data Created'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # def post(self, request, format=None):
+    #     user = request.user
+    #     serializer = PlaceOrderSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         data = serializer.save()
+    #         data.user = user
+    #         data.save()
+    #         return Response({'msg': 'Data Created'}, status=status.HTTP_201_CREATED)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderListApi(APIView):
@@ -373,34 +370,29 @@ class LogoutView(APIView):
     
 class CheckOutApi(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         user = request.user
         cart = Cart.objects.filter(user=user)
-        d = {}
+        ls = []
         service_charge = 40.0
         cart_data = Cart.objects.all()
         for i in cart_data:
+            d = {}
             d['quantity'] = i.quantity
-            d['dprice'] = i.product.discountd_price
-            d['pname'] = i.product
-
-        price = d['quantity'] * d['dprice']
-        total_amount = service_charge + price
-        CheckOut.total_amount = total_amount
-        CheckOut.price = price
-        # checkk = CheckOut.objects.create(user=user, product=d['pname'], quantity=d['quantity'], price=d['dprice'], total_amount=total)  # Use correct field names here
-        # checkk.save()
-        data1 = CheckOut.objects.filter(user=user).order_by('-id')[:1].get()
-        print(data1, 'dataaaa')
-        # Serialize the CheckOut object using CheckOutSerializer
-        serializer = CheckOutSerializer(data1)
-
+            d['price'] = i.product.discountd_price*i.quantity
+            d['product'] = i.product
+            ls.append(d)
+        total_price = sum(item['price'] for item in ls)
+        total_amo = total_price+service_charge
+       
+        CheckOut.total_amount = total_amo
+        data1 = CheckOutSerializer(ls,many=True)
         response_data = {
-            'status': 'Success',
-            'data': serializer.data
+            'status': 'Success'
         }
 
-        return Response(response_data)
+        return Response((data1.data,CheckOut.total_amount))
     
 class OrderListApi(APIView):
     def get(self,request, format=None): 
@@ -421,6 +413,21 @@ class RelatedProducts(APIView):
         products = Product.objects.filter(title=name).exclude(id=pk)
         serializer = ProductSerializer(products,many=True)
         return Response(serializer.data, status=200)
+    
+
+
+class FeedbackListCreateView(generics.ListCreateAPIView):
+    queryset=Feedback.objects.all()
+    serializer_class=FeedbackSerializer     
+
+from rest_framework import viewsets
+
+class UpdateData(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
 '''
 
 # class LogoutView(APIView):

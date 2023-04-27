@@ -16,22 +16,25 @@ router = routers.DefaultRouter()
 # router.register('product', ProductViewSet)
 # router.register('customers', CustomerViewSet)
 # router.register('cart',addcartApi)
-
+router.register('updateData',views.UpdateData)
+from .views import FeedbackListCreateView
 urlpatterns = [
-    path('custreg/', views.CustomerRegistrationAPI.as_view()),
+
+    path('userreg/', views.UserRegistrationAPI.as_view()),
     path('userlogin/', views.UserLoginAPI.as_view()),
-    path('farmreg/', views.FarmerRegistrationAPI.as_view()), 
     path('veglist/',views.VegitablesList.as_view(),name='home'),
     path('frtlist/',views.FruitsList.as_view(),name='home'),
     path("addtocart/",views.add_to_cartAPI.as_view()),
+    path("addtocartpost/",views.add_to_cartPost.as_view()),
+    path("deletecart/<int:pk>/",views.Deletecart.as_view()),
     path('addproducts/', views.AddProductsView.as_view(), name='add_products'),
     path('productdetails/<int:pk>/', views.ProductDetailView.as_view(), name='productdetails'),
     path('address/', views.AddressAPI.as_view(), name='AddressAPI'),
     path('profile/', views.ProfileApi.as_view(), name='profileAPI'),
     path('orders/',views.OrderPlacedApi.as_view()),
     path('orderlist/',views.OrderListApi.as_view()),
-    path('veglistbypin/',views.Veglistbypin.as_view(),name='home'),
-    path('frtlistbypin/',views.Frtlistbypin.as_view(),name='home'),
+    path('veglistbypin/<int:pin>/',views.Veglistbypin.as_view(),name='home'),
+    path('frtlistbypin/<int:pin>/',views.Frtlistbypin.as_view(),name='home'),
     # path('address/<int:pk>', views.AddressAPI.as_view(), name='AddressAPI'),
     path("relateproduct/<int:pk>/",views.RelatedProducts.as_view()),
     path('buynow/', views.BuyNowView.as_view()),
@@ -47,6 +50,7 @@ urlpatterns = [
     path('checkout/',views.CheckOutApi.as_view(),name='checkout'),
     path('auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('cus_orders/',views.OrderPlacedApi.as_view()),
+    path('feedback/', FeedbackListCreateView.as_view(), name='feedback'),
     # path('user/', views.UserDetailView.as_view()),
     #  path('users/', views.ListUsersAPIView.as_view()),
     # path('farmlogin/', views.FarmerLoginAPI.as_view()),

@@ -106,24 +106,24 @@ CATEGORY_CHOICES=(
 )
 
 PRODUCTS = (
-('APL','Apple'),
-('BAN','Banana'),
-('BLKBR','Black Berries'),
-('BLUBR','Blue Berries'),
-('BRJL','Brinjal'),
-('BITGU','Bitter Gourd'),
-('CAPSI','Capsicum'),
-('CBG','Cabbage'),
+('Apple','Apple'),
+('Banana','Banana'),
+('Black Berries','Black Berries'),
+('Blue Berries','Blue Berries'),
+('Brinjal','Brinjal'),
+('Bitter Gourd','Bitter Gourd'),
+('Capsicum','Capsicum'),
+('Cabbage','Cabbage'),
 ('Chili','Chili'),
-('Cherry','Cherries'),
-('CustApp','Custard Apple'),
-('ClustBeans','cluster Beans'),
-('EleTusjOk','Elephant Tusk Okra'),
-('FB','Flat Beans'),
-('ginger','Ginger'),
-('Grps','Grapes'),
+('Cherries','Cherries'),
+('Custard Apple','Custard Apple'),
+('cluster Beans','cluster Beans'),
+('Elephant Tusk Okra','Elephant Tusk Okra'),
+('Flat Beans','Flat Beans'),
+('Ginger','Ginger'),
+('Grapes','Grapes'),
 ('Guava','Guava'),
-('mlbCuc','malabar Cucumber'),
+('malabar Cucumber','malabar Cucumber'),
 ('Mango','Mango'),
 ('Onion','Onion'),
 ('Okra','Okra'),
@@ -133,13 +133,13 @@ PRODUCTS = (
 ('Pear','Pear'),
 ('Plumps','Plumps'),
 ('Papaya','Papaya'),
-('Pumpkins','PumpKins'),
+('PumpKins','PumpKins'),
 ('Pigeon Pea','Pigeon Pea'),
 ('Potato','Potato'),
-('snake Cucu','Snake Cucumber'),
+('Snake Cucumber','Snake Cucumber'),
 ('Tarmeric','Tarmeric'),
-('WaterMelon','Water Melon'),
-('WaterSpinach','Water Spinach'),
+('Water Melon','Water Melon'),
+('Water Spinach','Water Spinach'),
 )
 UNIT = (
 ('KG','KG'),
@@ -150,7 +150,7 @@ UNIT = (
 
 class Product(models.Model):
     farmer=models.ForeignKey(User,on_delete=models.CASCADE, null = True)
-    title=models.CharField(choices=PRODUCTS,max_length=15)
+    title=models.CharField(choices=PRODUCTS,max_length=50)
     selling_price=models.FloatField()
     discountd_price=models.FloatField()
     description=models.TextField()
@@ -207,3 +207,17 @@ class CheckOut(models.Model):
     quantity = models.PositiveIntegerField(default=1)  # Update 'quantnity' to 'quantity' to fix a typo
     price = models.FloatField(default=0.0)
     total_amount = models.FloatField(default = 0.0)
+
+
+
+
+#  FEEDBACK
+
+
+class Feedback(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
