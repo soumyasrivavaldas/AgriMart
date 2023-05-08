@@ -52,6 +52,11 @@ class UserSerializer(serializers.ModelSerializer):
     
 
 class CartSerializer(serializers.ModelSerializer):
+    product_image=serializers.FileField(source='product.product_image')
+    title=serializers.CharField(source='product.title')
+    selling_price=serializers.IntegerField(source='product.selling_price')
+    discountd_price=serializers.IntegerField(source='product.discountd_price')
+    description=serializers.CharField(source='product.description')
     class Meta:
         model=Cart
         fields= '__all__'

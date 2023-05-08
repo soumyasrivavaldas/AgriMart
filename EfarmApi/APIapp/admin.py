@@ -6,7 +6,6 @@ admin.site.register(Product)
 admin.site.register(Cart)
 admin.site.register(Customer)
 admin.site.register(OrderPlaced)
-admin.site.register(OrderList)
 admin.site.register(Feedback)
 # @admin.register(Customer)
 # class custAdmin(admin.ModelAdmin):

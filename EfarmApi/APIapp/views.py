@@ -29,6 +29,17 @@ from django.shortcuts import render
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import get_user_model, authenticate
+
+
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 User = get_user_model() 
 class UserRegistrationAPI(APIView):
@@ -57,6 +68,8 @@ class UserRegistrationAPI(APIView):
 
 class UserLoginAPI(APIView):
     def post(self, request):
+        dic ={}
+        dic = {'csrftoken':'sss'}
         email = request.data.get('email')
         password = request.data.get('password')
         user_type = request.data.get('user_type')
@@ -68,11 +81,17 @@ class UserLoginAPI(APIView):
                 if user.check_password(password):
                     login(request, user)
                     print(request.user)
+                    print(request.META)
+                    dic['csrftoken']= request.META['CSRF_COOKIE']
+                    print(dic.items())
                     return Response({
                         'status': 'success',
                         'IsCustomer': user.is_customer,
                         'IsFarmer': user.is_farmer,
-                        'message': 'login successful as a farmer'
+                        'username':user.username,
+                        'userId':user.id,
+                        'message': 'login successful as a farmer',
+                        'csrftoken':dic['csrftoken']
                     })
                 else:
                     raise AuthenticationFailed('Incorrect Password')
@@ -80,11 +99,17 @@ class UserLoginAPI(APIView):
                 if user.check_password(password):
                     login(request, user)
                     print(request.user)
+                    print(request.META)
+                    dic['csrftoken']= request.META['CSRF_COOKIE']
+                    print(dic.items())
                     return Response({
                         'status': 'success',
                         'IsCustomer': user.is_customer,
                         'IsFarmer': user.is_farmer,
-                        'message': 'login successful as a customer'
+                        'username':user.username,
+                        'userId':user.id,
+                        'message': 'login successful as a customer',
+                        'csrftoken': dic['csrftoken']
                     })
                 else:
                     raise AuthenticationFailed('Incorrect Password')
@@ -93,7 +118,6 @@ class UserLoginAPI(APIView):
                     'Please select either customer or farmer')
         else:
             raise AuthenticationFailed('user not found')
-
 
 
 
@@ -187,18 +211,10 @@ class Deletecart(APIView):
         
 
 
-class AddProductsView(APIView):
+class AddProductsView(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ProductSerializer
-
-    def post(self, request, format=None):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            s = serializer.save()
-            s.farmer = request.user
-            s.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
 
 
 class ProductDetailView(APIView):
@@ -242,13 +258,48 @@ class BuyNowView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class OrderPlacedApi(APIView):
-    permission_classes=[IsAuthenticated]
+
+
+from rest_framework.authentication import SessionAuthentication
+from rest_framework import permissions
+
+
+
+class IsCustomer(permissions.BasePermission):
+    def has_permission(self, request, view):
+        print(request.user, request.user.is_customer ,request.user.is_farmer,  '----------')
+        return request.user.is_customer and request.user.is_farmer==False
+    
+class IsFarmer(permissions.BasePermission):
+    def has_permission(self, request, view):
+        print(request.user, request.user.is_customer ,request.user.is_farmer,  '----------')
+        return request.user.is_customer==False and request.user.is_farmer
+
+class OrderPlacedApiCustomer(APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes=[IsCustomer]
     def get(self, request, pk=None, format=None):
+        print(request.user, 'dataaaa')
         user = request.user
-        cus = OrderPlaced.objects.filter(user=user)
+        # userobj = User.objects.filter(customer__user=user)
+        # print(userobj)  
+        cus = OrderPlaced.objects.filter(customer__user=user)
         serializer = PlaceOrderSerializer(cus, many=True)
         return Response(serializer.data)
+        
+        
+class OrderPlacedApiFarmer(APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes=[IsFarmer]
+    def get(self, request, pk=None, format=None):
+        user = request.user
+        userobj = User.objects.filter(username=user)
+        print(userobj)  
+        cus = OrderPlaced.objects.filter(user=user)
+        serializer = PlaceOrderSerializer(cus, many=True)
+        return Response(serializer.data)          
+
+
 
     # def post(self, request, format=None):
     #     user = request.user
@@ -261,39 +312,127 @@ class OrderPlacedApi(APIView):
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class OrderListApi(APIView):
-    def get(self, request, pk=None, format=None):
-        user = request.user
-        cus = OrderList.objects.filter(user=user)
-        serializer = PlaceOrderSerializer(cus, many=True)
-        return Response(serializer.data)
+
+
+# class PasswordChangeView(APIView):
+#    # permission_classes=[IsAuthenticated]
+#     def put(self, request, format=None):
+#         # authenticate user
+#         user = authenticate(email=request.user.email,
+#                             password=request.data['old_password'])
+#         if user is None:
+#             return Response({'error': 'Invalid old password'})
+#         new_password = request.data['new_password']
+#         if not user.check_password(new_password):
+#             if len(new_password) < 8:
+#                 return Response({'error': 'Password must be at least 8 characters'})
+#             if not any(char.isdigit() for char in new_password):
+#                 return Response({'error': 'Password must contain at least one digit'})
+#             if not any(char.isupper() for char in new_password):
+#                 return Response({'error': 'Password must contain at least one uppercase letter'})
+#             if not any(char.islower() for char in new_password):
+#                 return Response({'error': 'Password must contain at least one lowercase letter'})
+
+#         user.set_password(new_password)
+#         user.save()
+
+#         return Response({'message': 'Password changed successfully'})
+
+
+# User = get_user_model()
+
+
+
+
+
+
 
 
 class PasswordChangeView(APIView):
-    def put(self, request, format=None):
-        # authenticate user
-        user = authenticate(email=request.user.email,
-                            password=request.data['old_password'])
-        if user is None:
-            return Response({'error': 'Invalid old password'})
-        new_password = request.data['new_password']
-        if not user.check_password(new_password):
-            if len(new_password) < 8:
-                return Response({'error': 'Password must be at least 8 characters'})
-            if not any(char.isdigit() for char in new_password):
-                return Response({'error': 'Password must contain at least one digit'})
-            if not any(char.isupper() for char in new_password):
-                return Response({'error': 'Password must contain at least one uppercase letter'})
-            if not any(char.islower() for char in new_password):
-                return Response({'error': 'Password must contain at least one lowercase letter'})
+    permission_classes = [IsAuthenticated]
 
+    def put(self, request, format=None):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        # check if old password is correct
+        if not user.check_password(old_password):
+            return Response({'error': 'Invalid old password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # validate the new password
+        if len(new_password) < 8:
+            return Response({'error': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+        if not any(char.isdigit() for char in new_password):
+            return Response({'error': 'Password must contain at least one digit'}, status=status.HTTP_400_BAD_REQUEST)
+        if not any(char.isupper() for char in new_password):
+            return Response({'error': 'Password must contain at least one uppercase letter'}, status=status.HTTP_400_BAD_REQUEST)
+        if not any(char.islower() for char in new_password):
+            return Response({'error': 'Password must contain at least one lowercase letter'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # set the new password
         user.set_password(new_password)
         user.save()
+        csrftoken = request.META['CSRF_COOKIE']
+        return Response({'message': 'Password changed successfully','csrftoken':csrftoken}, status=status.HTTP_200_OK)
 
-        return Response({'message': 'Password changed successfully'})
 
 
-User = get_user_model()
+
+
+class LogoutAPI(APIView):
+    def post(self, request, format=None):
+        logout(request)
+        # csrftoken = request.META['CSRF_COOKIE']
+        return Response({"MSG":"log out done"},status=status.HTTP_204_NO_CONTENT)
+
+    
+class CheckOutApi(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        cart = Cart.objects.filter(user=user)
+        ls = []
+        service_charge = 40.0
+        cart_data = Cart.objects.all()
+        for i in cart_data:
+            d = {}
+            d['quantity'] = i.quantity
+            d['price'] = i.product.discountd_price*i.quantity
+            d['product'] = i.product
+            ls.append(d)
+        total_price = sum(item['price'] for item in ls)
+        total_amo = total_price+service_charge
+       
+        CheckOut.total_amount = total_amo
+        data1 = CheckOutSerializer(ls,many=True)
+        response_data = {
+            'status': 'Success'
+        }
+
+        return Response((data1.data,{"total_amount":CheckOut.total_amount}))
+    
+
+
+class RelatedProducts(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self, request, pk):
+        product = Product.objects.get(id=pk)
+        name = product.title
+        print('name of product',name)
+        products = Product.objects.filter(title=name).exclude(id=pk)
+        serializer = ProductSerializer(products,many=True)
+        return Response(serializer.data, status=200)
+    
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class FeedbackListCreateView(generics.ListCreateAPIView):
+    queryset=Feedback.objects.all()
+    serializer_class=FeedbackSerializer     
+
+
 
 
 class ForgotPasswordView(views.APIView):
@@ -325,242 +464,48 @@ class ForgotPasswordView(views.APIView):
 
 
 User = get_user_model()
-
-
 class PasswordResetConfirmView(views.APIView):
-    def get(self, request, uidb64, token, format=None):
-        try:
-            uid = int(uidb64)
-            user = User.objects.get(id=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-        if user is not None and default_token_generator.check_token(user, token):
-            request.session['reset_user_id'] = user.id
-            form = SetPasswordForm(user)
-            return render(request, 'reset_password.html', {'form': form.as_p()})
-        else:
-            return Response({'detail': 'Invalid reset link.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
     def post(self, request, uidb64, token, format=None):
         try:
             uid = int(uidb64)
             user = User.objects.get(id=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             user = None
+        print(user)
         if user is not None and default_token_generator.check_token(user, token):
-            form = SetPasswordForm(user, request.POST)
-            if form.is_valid():
-                form.save()
-                user = form.user
-                login(request, user)
-                request.session.pop('reset_user_id', None)
-                return Response({'detail': 'Password has been reset successfully.'},
-                                status=status.HTTP_200_OK)
+            new_password = request.data['new_password']
+            confirm_password = request.data["confirm_password"]
+            if new_password == confirm_password:
+                if not user.check_password(new_password):
+                    if len(new_password) < 8:
+                        return Response({'error': 'Password must be at least 8 characters'})
+                    if not any(char.isdigit() for char in new_password):
+                        return Response({'error': 'Password must contain at least one digit'})
+                    if not any(char.isupper() for char in new_password):
+                        return Response({'error': 'Password must contain at least one uppercase letter'})
+                    if not any(char.islower() for char in new_password):
+                        return Response({'error': 'Password must contain at least one lowercase letter'})
+
+                user.set_password(new_password)
+                user.save()
             else:
-                return render(request, 'reset_password.html', {'form': form.as_p()})
+                return Response({'detail': 'Password not matching'},
+                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Password has been reset successfully.'},status=status.HTTP_200_OK)
         else:
             return Response({'detail': 'Invalid reset link.'},
                             status=status.HTTP_400_BAD_REQUEST)
-
-class LogoutView(APIView):
-    def post(self, request):
-        logout(request)
-        return Response({"detail": "You have been logged out."})
-    
-class CheckOutApi(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        cart = Cart.objects.filter(user=user)
-        ls = []
-        service_charge = 40.0
-        cart_data = Cart.objects.all()
-        for i in cart_data:
-            d = {}
-            d['quantity'] = i.quantity
-            d['price'] = i.product.discountd_price*i.quantity
-            d['product'] = i.product
-            ls.append(d)
-        total_price = sum(item['price'] for item in ls)
-        total_amo = total_price+service_charge
-       
-        CheckOut.total_amount = total_amo
-        data1 = CheckOutSerializer(ls,many=True)
-        response_data = {
-            'status': 'Success'
-        }
-
-        return Response((data1.data,CheckOut.total_amount))
-    
-class OrderListApi(APIView):
-    def get(self,request, format=None): 
-        print('user',request.user)
-        obj = User.objects.get(username=request.user)
-        cus = OrderPlaced.objects.filter(user_id=obj.id)
-        print(cus)
-        serializer = PlaceOrderSerializer(cus, many=True)
-        print(serializer)
-        return Response(serializer.data)
-
-class RelatedProducts(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    def get(self, request, pk):
-        product = Product.objects.get(id=pk)
-        name = product.title
-        print('name of product',name)
-        products = Product.objects.filter(title=name).exclude(id=pk)
-        serializer = ProductSerializer(products,many=True)
-        return Response(serializer.data, status=200)
-    
+        
 
 
-class FeedbackListCreateView(generics.ListCreateAPIView):
-    queryset=Feedback.objects.all()
-    serializer_class=FeedbackSerializer     
-
-from rest_framework import viewsets
-
-class UpdateData(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
 
-'''
-
-# class LogoutView(APIView):
-#     authentication_classes = [authentication.TokenAuthentication]
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def post(self, request):
-#         request.user.auth_token.delete()
-#         return Response({"detail": "You have been logged out."})
-class FarmerLoginAPI(APIView):
-    def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
-        print(email,password)
-        user = User.objects.filter(email=email).first()
-        if user is not None:
-            if user.is_farmer:
-                if user.check_password(password):
-                    login(request, user)
-                    print(request.user)
-                    return Response({
-                        'status': 'success',
-                        'data': {'user': email},
-                        'is_superuser': user.is_superuser,
-                        'is_staff': user.is_staff,
-                        'message': 'login successful'
-                    })
-                else:
-                    raise AuthenticationFailed('Incorrect Password')
-            else:
-                raise AuthenticationFailed('user not registered as farmer')
-        else:
-            raise AuthenticationFailed('user not found')
-class FarmerRegistrationAPI(APIView):
-    permission_classes = (permissions.AllowAny,)
-    serializer_class = UserSerializer
-
-    def post(self, request, format=None):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                print("before", serializer.validated_data)
-                password = serializer.validated_data.pop('password')
-                print(password)
-                confirm_password = serializer.validated_data.pop(
-                    'confirm_password')
-                print(confirm_password)
-                print("After", serializer.validated_data)
-                if password != confirm_password:
-                    return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-                user = serializer.save()
-                user.set_password(password)
-                user.is_farmer = True
-                user.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except IntegrityError:
-                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# class IsProductOwner(permissions.BasePermission):
+#     def has_object_permission(self, request, view, obj):
+#         return obj.farmer == request.user.farmer
 
 
-'''
-
-
-# class OrderListApi(APIView):
-#     def get(self,request, pk=None, format=None):
-#         user = request.user
-#         cus = OrderList.objects.get(user=user)
-#         user.username
-# class ListUsersAPIView(generics.ListAPIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-#     serializer_class = UserSerializer
-#     def get_queryset(self):
-#         if self.request.user.is_staff:
-#             return User.objects.all()
-#         return User.objects.filter(id=self.request.user.id)
-# class UserDetailView(APIView):
-#     permission_classes = (permissions.IsAuthenticated)
-#     def get(self, request):
-#         serializer = UserSerializer(request.user)
-#         return Response(serializer.data)
-#     def patch(self, request):
-#         serializer = UserSerializer(request.user, data=request.data, partial=True)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data)
-# class CustomerViewSet(viewsets.ModelViewSet):
-#     permission_classes = [IsAuthenticated]
-#     queryset = Customer.objects.all()
-#     serializer_class = CustomerSerializer
-# # class add_to_cartAPI(APIView):
-# #     permission_classes=[IsAuthenticated]
-# #     def get(self, request, pk=None, format=None):
-# #         id = pk
-# #         if id is not None:
-# #             cart = Cart.objects.get(id=id)
-# #             serializer = CartSerializer(cart)
-# #             return Response(serializer.data)
-# #         cart = Cart.objects.all()
-# #         print(request.data)
-# #         serializer = CartSerializer(cart, many=True)
-# #         return Response(serializer.data)
-# #     def post(self, request, format=None):
-# #         serializer = CartSerializer(data=request.data)
-# #         if serializer.is_valid():
-# #             serializer.save()
-# #             return Response({'msg': 'Data Created'}, status=status.HTTP_201_CREATED)
-# #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# # class check_out(APIView):
-# #     def get(self, request, pk=None, format=None):
-# #         id = pk
-# #         if id is not None:
-# #             cart = Cart.objects.get(id=id)
-# #             serializer = checkoutSerializer(cart)
-# #             return Response(serializer.data)
-# #         cart = Cart.objects.all()
-# #         print(request.data)
-# #         serializer = checkoutSerializer(cart, many=True)
-# #         return Response(serializer.data)
-
-
-# ######################  model viewset Api  ########################################
-
-# from rest_framework import viewsets
-# from .serializers import ProductSerializer
-# from .models import Product
-
-# # class ProductViewSet(viewsets.ModelViewSet):
-# #     serializer_class = ProductSerializer
-# #     permission_classes = [IsAuthenticated]
-# #     queryset = Product.objects.all()
-
-
-# class addcartApi(viewsets.ModelViewSet):
-#     serializer_class=CartSerializer
-#     permission_classes=[IsAuthenticated]
-#     queryset= Cart.objects.all()
+# class UpdateData(viewsets.ModelViewSet):
+#     queryset=Product.objects.all()
+#     serializer_class=ProductSerializer
+#     permission_classes = [permissions.IsAuthenticated, IsProductOwner]

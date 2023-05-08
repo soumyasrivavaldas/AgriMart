@@ -51,41 +51,41 @@ class User(AbstractBaseUser, PermissionsMixin):
 # from django.utils.translation import gettext_lazy as _
 # from .constants import PaymentStatus
 
-STATE_CHOICES = (('KA', 'Karnataka'),
-('AP', 'Andhra Pradesh'),
-('KL', 'Kerala'),
-('TN', 'Tamil Nadu'),
-('MH', 'Maharashtra'),
-('UP', 'Uttar Pradesh'),
-('GA', 'Goa'),
-('GJ', 'Gujarat'),
-('RJ', 'Rajasthan'),
-('HP', 'Himachal Pradesh'),
-('TG', 'Telangana'),
-('AR', 'Arunachal Pradesh'),
-('AS', 'Assam'), ('BR', 'Bihar'),
-('CT', 'Chhattisgarh'),
-('HR', 'Haryana'),
-('JH', 'Jharkhand'),
-('MP', 'Madhya Pradesh'),
-('MN', 'Manipur'),
-('ML', 'Meghalaya'),
-('MZ', 'Mizoram'),
-('NL', 'Nagaland'),
-('OR', 'Odisha'),
-('PB', 'Punjab'),
-('SK', 'Sikkim'),
-('TR', 'Tripura'),
-('UT', 'Uttarakhand'),
-('WB', 'West Bengal'),
-('AN', 'Andaman and Nicobar Islands'),
-('CH', 'Chandigarh'),
-('DH', 'Dadra and Nagar Haveli and Daman and Diu'),
-('DL', 'Delhi'),
-('JK', 'Jammu and Kashmir'),
-('LD', 'Lakshadweep'),
-('LA', 'Ladakh'),
-('PY', 'Puducherry'))
+STATE_CHOICES = (('Karnataka', 'Karnataka'),
+('Andhra Pradesh', 'Andhra Pradesh'),
+('Kerala', 'Kerala'),
+('Tamil Nadu', 'Tamil Nadu'),
+('Maharashtra', 'Maharashtra'),
+('Uttar Pradesh', 'Uttar Pradesh'),
+('Goa', 'Goa'),
+('Gujarat', 'Gujarat'),
+('Rajasthan', 'Rajasthan'),
+('Himachal Pradesh', 'Himachal Pradesh'),
+('Telangana', 'Telangana'),
+('Arunachal Pradesh', 'Arunachal Pradesh'),
+('Assam', 'Assam'), ('Bihar', 'Bihar'),
+('Chhattisgarh', 'Chhattisgarh'),
+('Haryana', 'Haryana'),
+('Jharkhand', 'Jharkhand'),
+('Madhya Pradesh', 'Madhya Pradesh'),
+('Manipur', 'Manipur'),
+('Meghalaya', 'Meghalaya'),
+('Mizoram', 'Mizoram'),
+('Nagaland', 'Nagaland'),
+('Odisha', 'Odisha'),
+('Punjab', 'Punjab'),
+('Sikkim', 'Sikkim'),
+('Tripura', 'Tripura'),
+('Uttarakhand', 'Uttarakhand'),
+('West Bengal', 'West Bengal'),
+('Andaman and Nicobar Islands', 'Andaman and Nicobar Islands'),
+('Chandigarh', 'Chandigarh'),
+('Dadra and Nagar Haveli and Daman and Diu', 'Dadra and Nagar Haveli and Daman and Diu'),
+('Delhi', 'Delhi'),
+('Jammu and Kashmir', 'Jammu and Kashmir'),
+('Lakshadweep', 'Lakshadweep'),
+('Ladakh', 'Ladakh'),
+('Puducherry', 'Puducherry'))
 
 class Customer(models.Model):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
@@ -96,13 +96,13 @@ class Customer(models.Model):
     state=models.CharField(choices=STATE_CHOICES,max_length=50)
 
     def __str__(self):
-        return str(self.id)
+        return str(self.name)
 
 CATEGORY_CHOICES=(
-    ('V','Vegitable'),
-    ('F','Fruits'),
-    ('M','Milk'),
-    ('Fi','Fish')
+    ('Vegitable','Vegitable'),
+    ('Fruits','Fruits'),
+    ('Milk','Milk'),
+    ('Fish','Fish')
 )
 
 PRODUCTS = (
@@ -154,7 +154,7 @@ class Product(models.Model):
     selling_price=models.FloatField()
     discountd_price=models.FloatField()
     description=models.TextField()
-    category=models.CharField(choices=CATEGORY_CHOICES,max_length=2)
+    category=models.CharField(choices=CATEGORY_CHOICES,max_length=50)
     quantity = models.IntegerField(default=1)
     Product_Added_date = models.DateTimeField(auto_now_add=True)
     product_image=models.FileField(upload_to='productimg')
@@ -170,12 +170,13 @@ class Cart(models.Model):
     quantity=models.IntegerField(default=1)
 
     def __str__(self):
-        return str(self.id)
+        return str(self.user)
 
 STATUS_CHOICES=(
     ('Accepted','Accepted'),
     ('Packed','Packed'),
     ('On the way','On the way'),
+    ('Dispached','Dispached'),
     ('Delivered','Delevered'),
     ('Cancle','Cancle')
 )
@@ -193,13 +194,9 @@ class OrderPlaced(models.Model):
         return str(self.customer)
 
 
-class OrderList(models.Model):
-    user=models.ForeignKey(User,on_delete=models.CASCADE)
-    customer=models.ForeignKey(Customer,on_delete=models.CASCADE)
-    product_name=models.ForeignKey(Product,on_delete=models.CASCADE)
-    quantity=models.PositiveIntegerField(default=1)
-    order_date=models.DateTimeField(auto_now_add=True)
-    status=models.CharField(max_length=50,choices=STATUS_CHOICES,default='Pending')
+
+
+
 
 class CheckOut(models.Model):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
